@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-react-app:*)",
+      "Bash(export:*)",
+      "Bash([ -s \"$NVM_DIR/nvm.sh\" ])",
+      "Bash(. \"$NVM_DIR/nvm.sh\")",
+      "Bash(node --version:*)",
+      "Bash(npm:*)",
+      "Bash(brew install:*)",
+      "Bash(python3:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs:*)",
+      "Bash(node -e:*)",
+      "WebFetch(domain:www.npmjs.com)"
+    ]
+  }
+}

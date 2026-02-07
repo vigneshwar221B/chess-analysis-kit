@@ -5,6 +5,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 ENV STOCKFISH_PATH=/usr/games/stockfish
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 COPY requirements.txt .

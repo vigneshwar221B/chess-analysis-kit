@@ -1,0 +1,82 @@
+image:
+  tag: "3.2"
+
+tolerations:
+  - operator: Exists
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+config:
+  service: |
+    [SERVICE]
+        Flush         5
+        Log_Level     info
+        Daemon        off
+        Parsers_File  /fluent-bit/etc/parsers.conf
+        HTTP_Server   On
+        HTTP_Listen   0.0.0.0
+        HTTP_Port     2020
+        Health_Check  On
+
+  inputs: |
+    [INPUT]
+        Name              tail
+        Tag               kube.*
+        Path              /var/log/containers/*.log
+        Parser            cri
+        DB                /var/log/flb_kube.db
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  10
+
+  filters: |
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     kube.var.log.containers.
+        Merge_Log           On
+        Keep_Log            Off
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+
+    [FILTER]
+        Name    grep
+        Match   kube.*
+        Exclude $kubernetes['namespace_name'] ^(kube-system|kube-public|kube-node-lease)$
+
+    [FILTER]
+        Name    modify
+        Match   kube.*
+        Add     cluster chess-local
+
+  outputs: |
+    [OUTPUT]
+        Name   stdout
+        Match  kube.*
+        Format json_lines
+
+    ## CloudWatch (uncomment when on AWS EKS)
+    # [OUTPUT]
+    #     Name              cloudwatch_logs
+    #     Match             kube.*
+    #     region            us-east-1
+    #     log_group_name    /chess-app/containers
+    #     log_stream_prefix fluent-bit-
+    #     auto_create_group On
+    #     log_key           log
+
+  customParsers: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "2020"
+  prometheus.io/path: "/api/v1/metrics/prometheus"

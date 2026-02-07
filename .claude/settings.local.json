@@ -39,7 +39,10 @@
       "Bash(gunzip:*)",
       "Bash(helm upgrade:*)",
       "Bash(kubectl top:*)",
-      "Bash(kubectl describe:*)"
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl exec:*)",
+      "Bash(pip3 install:*)",
+      "Bash(grep:*)"
     ]
   }
 }

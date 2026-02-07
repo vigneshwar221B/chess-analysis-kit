@@ -38,6 +38,7 @@ function App() {
   const [depth, setDepth] = useState(20);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const socketRef = useRef(null);
+  const pendingFenRef = useRef(null);
 
   useEffect(() => {
     const socket = io(BACKEND_URL, {
@@ -49,6 +50,7 @@ function App() {
     socket.on("disconnect", () => setConnected(false));
 
     socket.on("analysis_result", (data) => {
+      if (data.fen && data.fen !== pendingFenRef.current) return;
       setIsAnalyzing(false);
       if (data.lines && data.lines.length > 0) {
         setAnalysisLines(data.lines);
@@ -75,7 +77,6 @@ function App() {
       const startFen = data.positions[0].fen;
       setGame(new Chess(startFen));
       setCurrentMoveIndex(-1);
-      requestAnalysis(startFen);
     });
 
     socket.on("pgn_error", (data) => {
@@ -89,6 +90,7 @@ function App() {
   const requestAnalysis = useCallback(
     (fen) => {
       if (socketRef.current?.connected) {
+        pendingFenRef.current = fen;
         setIsAnalyzing(true);
         setAnalysisLines([]);
         setBestMove(null);

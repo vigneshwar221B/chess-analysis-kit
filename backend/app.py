@@ -1,3 +1,9 @@
+import eventlet
+eventlet.monkey_patch()
+
+import json
+import logging
+import sys
 import time
 
 import chess
@@ -8,6 +14,22 @@ from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_
 
 from config import DEFAULT_DEPTH, DEFAULT_MULTIPV, MIN_DEPTH, MAX_DEPTH
 from engine import StockfishEngine, parse_pgn
+
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        return json.dumps({
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        })
+
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(JSONFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[handler])
+logger = logging.getLogger("chess-backend")
 
 app = Flask(__name__)
 CORS(app)
@@ -39,13 +61,13 @@ def metrics():
 
 @socketio.on("connect")
 def handle_connect():
-    print("Client connected")
+    logger.info("Client connected")
     emit("connected", {"message": "Connected to chess analysis server"})
 
 
 @socketio.on("disconnect")
 def handle_disconnect():
-    print("Client disconnected")
+    logger.info("Client disconnected")
 
 
 @socketio.on("analyze")
@@ -108,9 +130,8 @@ def handle_parse_pgn(data):
 if __name__ == "__main__":
     try:
         engine.start()
-        print("Stockfish engine started")
+        logger.info("Stockfish engine started")
     except Exception as e:
-        print(f"Warning: Could not start Stockfish: {e}")
-        print("Make sure Stockfish is installed and STOCKFISH_PATH is set correctly")
+        logger.warning("Could not start Stockfish: %s", e)
 
-    socketio.run(app, host="0.0.0.0", port=5001, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5001, debug=False)

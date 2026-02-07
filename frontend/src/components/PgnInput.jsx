@@ -2,11 +2,19 @@ import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const SAMPLE_PGN = `[Event "Example Game"]
-[White "Magnus Carlsen"]
-[Black "Vidit Gujrathi"]
+const SAMPLE_PGN = `
+[Event "FIDE World Blitz Chess Championship 2023"]
+[Site "Chess.com"]
+[Date "2023.12.29"]
+[Round "11"]
+[White "Dubov, Daniil"]
+[Black "Nepomniachtchi, Ian"]
+[Result "*"]
+[WhiteElo "2763"]
+[BlackElo "2795"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d4 exd4 5. Ng5 1/2-1/2`;
+1. Nf3 Nf6 2. Nd4 Nd5 3. Nb3 Nb6 4. Nc3 Nc6 5. Ne4 Ne5 6. Ng5 Ng4 7. Nf3 Nf6 8.
+Ng1 Ng8 9. Nc5 Nc4 10. Na4 Na5 11. Nc3 Nc6 12. Nb1 Nb8 *`;
 
 export default function PgnInput({ onLoadPgn }) {
   const [pgn, setPgn] = useState("");

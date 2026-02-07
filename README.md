@@ -39,6 +39,8 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **Prometheus** — metrics collection with custom scrape config for the backend
 - **Grafana** — pre-provisioned dashboard with request rates, latency percentiles, analysis duration, and error tracking
 - **prometheus_client** — custom metrics (analysis request counter, duration histogram) exposed at `/metrics`
+- **Fluent Bit** — DaemonSet log collector with Kubernetes metadata enrichment, ready for AWS CloudWatch
+- **Structured JSON logging** — backend emits JSON logs for machine-parseable log aggregation
 
 ## Architecture
 
@@ -69,6 +71,13 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
          |            Monitoring Stack                  |
          |  Prometheus (:30090)  ←  scrape /metrics     |
          |  Grafana (:30300)     ←  dashboards          |
+         +----------------------------------------------+
+                              |
+         +--------------------+------------------------+
+         |            Logging Stack                     |
+         |  Fluent Bit (DaemonSet)                      |
+         |  tail /var/log/containers → stdout           |
+         |  (→ CloudWatch on AWS)                       |
          +----------------------------------------------+
 ```
 
@@ -125,7 +134,21 @@ helm install kube-prometheus prometheus-community/kube-prometheus-stack \
 
 A pre-built Grafana dashboard is auto-provisioned via ConfigMap when ArgoCD syncs the Helm chart.
 
-### 4. Access the App
+### 4. Deploy Logging (Optional)
+
+```bash
+# Add Helm repo
+helm repo add fluent https://fluent.github.io/helm-charts
+
+# Install Fluent Bit
+helm install fluent-bit fluent/fluent-bit \
+  --namespace logging --create-namespace \
+  -f helm/fluent-bit-values.yaml
+```
+
+Fluent Bit collects container logs as a DaemonSet, enriches them with Kubernetes metadata, and outputs to stdout. Switch to CloudWatch by uncommenting the output block in `helm/fluent-bit-values.yaml`.
+
+### 5. Access the App
 
 | Service | URL |
 |---------|-----|
@@ -196,6 +219,7 @@ chess-analysis-kit/
 │   │       ├── frontend-service.yaml
 │   │       └── grafana-dashboard-cm.yaml  # Auto-provisioned dashboard
 │   ├── argocd-app.yaml      # ArgoCD Application CR
-│   └── prometheus-values.yaml  # Prometheus + Grafana config
+│   ├── prometheus-values.yaml  # Prometheus + Grafana config
+│   └── fluent-bit-values.yaml  # Fluent Bit log collector config
 └── README.md
 ```

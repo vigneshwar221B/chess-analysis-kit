@@ -34,6 +34,7 @@ function App() {
   const [bestMove, setBestMove] = useState(null);
   const [moveHistory, setMoveHistory] = useState([]);
   const [pgnPositions, setPgnPositions] = useState(null);
+  const [gamePositions, setGamePositions] = useState([new Chess().fen()]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [depth, setDepth] = useState(20);
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -72,6 +73,7 @@ function App() {
 
     socket.on("pgn_parsed", (data) => {
       setPgnPositions(data.positions);
+      setGamePositions(data.positions.map((p) => p.fen));
       const moves = data.positions.filter((p) => p.san).map((p) => p.san);
       setMoveHistory(moves);
       const startFen = data.positions[0].fen;
@@ -124,15 +126,17 @@ function App() {
 
         if (!move) return false;
         setPgnPositions(null);
-        setCurrentMoveIndex(-1);
-        setMoveHistory((prev) => [...prev, move.san]);
+        const nextIndex = currentMoveIndex + 1;
+        setMoveHistory((prev) => [...prev.slice(0, nextIndex), move.san]);
+        setGamePositions((prev) => [...prev.slice(0, nextIndex + 1), gameCopy.fen()]);
+        setCurrentMoveIndex(nextIndex);
         setGame(gameCopy);
         return true;
       } catch {
         return false;
       }
     },
-    [game]
+    [game, currentMoveIndex]
   );
 
   const tryMove = useCallback(
@@ -149,15 +153,17 @@ function App() {
         });
         if (!move) return false;
         setPgnPositions(null);
-        setCurrentMoveIndex(-1);
-        setMoveHistory((prev) => [...prev, move.san]);
+        const nextIndex = currentMoveIndex + 1;
+        setMoveHistory((prev) => [...prev.slice(0, nextIndex), move.san]);
+        setGamePositions((prev) => [...prev.slice(0, nextIndex + 1), gameCopy.fen()]);
+        setCurrentMoveIndex(nextIndex);
         setGame(gameCopy);
         return true;
       } catch {
         return false;
       }
     },
-    [game]
+    [game, currentMoveIndex]
   );
 
   const handleSquareClick = useCallback(
@@ -207,18 +213,18 @@ function App() {
   };
 
   const handleSelectMove = (index) => {
-    if (!pgnPositions) return;
+    if (gamePositions.length <= 1) return;
     const posIndex = index + 1;
-    if (posIndex >= 0 && posIndex < pgnPositions.length) {
-      setGame(new Chess(pgnPositions[posIndex].fen));
+    if (posIndex >= 0 && posIndex < gamePositions.length) {
+      setGame(new Chess(gamePositions[posIndex]));
       setCurrentMoveIndex(index);
     }
   };
 
   const handleNavigate = (direction) => {
-    if (!pgnPositions) return;
+    if (gamePositions.length <= 1) return;
     const newIndex = currentMoveIndex + direction;
-    if (newIndex >= -1 && newIndex < pgnPositions.length - 1) {
+    if (newIndex >= -1 && newIndex < gamePositions.length - 1) {
       handleSelectMove(newIndex);
     }
   };
@@ -226,7 +232,7 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
-      if (!pgnPositions) return;
+      if (gamePositions.length <= 1) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         handleNavigate(-1);
@@ -244,6 +250,7 @@ function App() {
     setGame(newGame);
     setMoveHistory([]);
     setPgnPositions(null);
+    setGamePositions([newGame.fen()]);
     setCurrentMoveIndex(-1);
     setAnalysisLines([]);
     setBestMove(null);
@@ -365,7 +372,7 @@ function App() {
                 >
                   <ArrowLeftRight className="h-3 w-3" /> Flip
                 </Button>
-                {pgnPositions && (
+                {gamePositions.length > 1 && (
                   <>
                     <div className="w-px h-5 bg-border mx-1" />
                     <Button variant="ghost" size="icon" onClick={() => handleSelectMove(-1)}>
@@ -377,7 +384,7 @@ function App() {
                     <Button variant="ghost" size="icon" onClick={() => handleNavigate(1)}>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleSelectMove(pgnPositions.length - 2)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleSelectMove(gamePositions.length - 2)}>
                       <SkipForward className="h-3.5 w-3.5" />
                     </Button>
                   </>

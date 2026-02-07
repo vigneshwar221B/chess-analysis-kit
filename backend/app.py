@@ -1,7 +1,10 @@
+import time
+
 import chess
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 from config import DEFAULT_DEPTH, DEFAULT_MULTIPV, MIN_DEPTH, MAX_DEPTH
 from engine import StockfishEngine, parse_pgn
@@ -10,12 +13,28 @@ app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
+ANALYSIS_REQUESTS = Counter(
+    "chess_analysis_requests_total",
+    "Total number of analysis requests",
+    ["status"],
+)
+ANALYSIS_DURATION = Histogram(
+    "chess_analysis_duration_seconds",
+    "Time spent on Stockfish analysis",
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+)
+
 engine = StockfishEngine()
 
 
 @app.route("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
 
 
 @socketio.on("connect")
@@ -54,9 +73,13 @@ def handle_analyze(data):
     multipv = data.get("multipv", DEFAULT_MULTIPV)
 
     try:
+        start = time.time()
         result = engine.analyze(fen, depth=depth, multipv=multipv)
+        ANALYSIS_DURATION.observe(time.time() - start)
+        ANALYSIS_REQUESTS.labels(status="success").inc()
         emit("analysis_result", result)
     except Exception as e:
+        ANALYSIS_REQUESTS.labels(status="error").inc()
         emit("analysis_error", {"error": str(e)})
 
 

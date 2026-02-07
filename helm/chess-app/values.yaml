@@ -10,10 +10,10 @@ backend:
     stockfishPath: /usr/games/stockfish
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
       cpu: 500m
+      memory: 256Mi
+    limits:
+      cpu: "2"
       memory: 512Mi
   autoscaling:
     enabled: true

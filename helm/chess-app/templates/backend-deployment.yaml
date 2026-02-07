@@ -27,6 +27,13 @@ spec:
           env:
             - name: STOCKFISH_PATH
               value: {{ .Values.backend.env.stockfishPath }}
+          resources:
+            requests:
+              cpu: {{ .Values.backend.resources.requests.cpu }}
+              memory: {{ .Values.backend.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.backend.resources.limits.cpu }}
+              memory: {{ .Values.backend.resources.limits.memory }}
           readinessProbe:
             httpGet:
               path: /health

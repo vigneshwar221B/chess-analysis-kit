@@ -34,7 +34,7 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **AWS EKS** — managed Kubernetes with IRSA for pod-level IAM, ALB for WebSocket traffic
 - **S3 + CloudFront** — static frontend hosting with global CDN and SPA routing
 - **ElastiCache Redis** — encrypted session store with auth token in Secrets Manager
-- **Helm** — parameterized Kubernetes chart under `helm/chess-app/`
+- **Helm** — parameterized Kubernetes chart under `k8s/chess-app-helm-chart/`
 - **ArgoCD** — GitOps continuous delivery with auto-sync and self-heal
 - **GitHub Actions** — CI/CD pipeline (build → ECR → S3 → ArgoCD) and manual Terraform workflow
 
@@ -165,7 +165,7 @@ docker build -t chess-backend:latest ./backend
 ### 2. Deploy with Helm
 
 ```bash
-helm install chess-app ./helm/chess-app
+helm install chess-app ./k8s/chess-app-helm-chart
 ```
 
 Or apply the raw manifests with ArgoCD:
@@ -179,7 +179,7 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30443}]}}'
 
 # Deploy the app via ArgoCD
-kubectl apply -f helm/argocd-app.yaml
+kubectl apply -f k8s/argocd-app.yaml
 ```
 
 ### 3. Deploy Monitoring (Optional)
@@ -191,7 +191,7 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 # Install Prometheus + Grafana
 helm install kube-prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring --create-namespace \
-  -f helm/prometheus-values.yaml
+  -f k8s/prometheus-values.yaml
 ```
 
 A pre-built Grafana dashboard is auto-provisioned via ConfigMap when ArgoCD syncs the Helm chart.
@@ -205,10 +205,10 @@ helm repo add fluent https://fluent.github.io/helm-charts
 # Install Fluent Bit
 helm install fluent-bit fluent/fluent-bit \
   --namespace logging --create-namespace \
-  -f helm/fluent-bit-values.yaml
+  -f k8s/fluent-bit-values.yaml
 ```
 
-Fluent Bit collects container logs as a DaemonSet, enriches them with Kubernetes metadata, and outputs to stdout. Switch to CloudWatch by uncommenting the output block in `helm/fluent-bit-values.yaml`.
+Fluent Bit collects container logs as a DaemonSet, enriches them with Kubernetes metadata, and outputs to stdout. Switch to CloudWatch by uncommenting the output block in `k8s/fluent-bit-values.yaml`.
 
 ### 5. Access the App
 
@@ -285,8 +285,8 @@ chess-analysis-kit/
 │   ├── monitoring.tf            # CloudWatch log groups + Fluent Bit IAM
 │   ├── secrets.tf               # SSM Parameter Store + Secrets Manager
 │   └── iam.tf                   # GitHub OIDC provider + CI/CD roles
-├── helm/
-│   ├── chess-app/               # Helm chart
+├── k8s/
+│   ├── helm-chart/              # Helm chart
 │   │   ├── Chart.yaml
 │   │   ├── values.yaml
 │   │   └── templates/

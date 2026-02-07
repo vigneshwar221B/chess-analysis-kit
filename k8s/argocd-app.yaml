@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/vigneshwar221B/chess-analysis-kit.git
     targetRevision: main
-    path: helm/chess-app
+    path: k8s/chess-app-helm-chart
   destination:
     server: https://kubernetes.default.svc
     namespace: default

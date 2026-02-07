@@ -110,7 +110,7 @@
 #           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 #           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 #           kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
-#           kubectl apply -f helm/argocd-app.yaml
+#           kubectl apply -f k8s/argocd-app.yaml
 
 #       - name: Install Fluent Bit with CloudWatch
 #         run: |
@@ -121,7 +121,7 @@
 
 #           helm upgrade --install fluent-bit fluent/fluent-bit \
 #             --namespace logging --create-namespace \
-#             -f helm/fluent-bit-values.yaml \
+#             -f k8s/fluent-bit-values.yaml \
 #             --set serviceAccount.create=true \
 #             --set serviceAccount.name=fluent-bit \
 #             --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${FLUENT_BIT_ROLE_ARN}"
@@ -133,4 +133,4 @@
 
 #           helm upgrade --install kube-prometheus prometheus-community/kube-prometheus-stack \
 #             --namespace monitoring --create-namespace \
-#             -f helm/prometheus-values.yaml
+#             -f k8s/prometheus-values.yaml

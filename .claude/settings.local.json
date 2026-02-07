@@ -38,7 +38,8 @@
       "Bash(kubectl logs:*)",
       "Bash(gunzip:*)",
       "Bash(helm upgrade:*)",
-      "Bash(kubectl top:*)"
+      "Bash(kubectl top:*)",
+      "Bash(kubectl describe:*)"
     ]
   }
 }

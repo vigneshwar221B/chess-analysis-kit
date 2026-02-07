@@ -2,7 +2,7 @@
 
 A real-time chess analysis application powered by the Stockfish engine. Play moves on an interactive board and instantly see engine evaluations, top continuation lines, and best move arrows — or import any PGN game to step through and analyze move by move.
 
-![Architecture](#architecture)
+![Chess Analysis UI](docs/frontend-ui.png)
 
 ## Features
 
@@ -38,6 +38,8 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **ArgoCD** — GitOps continuous delivery with auto-sync and self-heal
 - **GitHub Actions** — CI/CD pipeline (build → ECR → S3 → ArgoCD) and manual Terraform workflow
 
+![ArgoCD Dashboard](docs/argo.png)
+
 ### Observability
 
 - **Prometheus** — metrics collection with custom scrape config for the backend
@@ -45,6 +47,8 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **prometheus_client** — custom metrics (analysis request counter, duration histogram) exposed at `/metrics`
 - **Fluent Bit** — DaemonSet log collector → AWS CloudWatch Logs with Kubernetes metadata enrichment
 - **Structured JSON logging** — backend emits JSON logs for CloudWatch Insights queries
+
+![Grafana Dashboard](docs/grafana.png)
 
 ### Security
 

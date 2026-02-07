@@ -3,10 +3,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const SAMPLE_PGN = `[Event "Example Game"]
-[White "Player 1"]
-[Black "Player 2"]
+[White "Magnus Carlsen"]
+[Black "Vidit Gujrathi"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O`;
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d4 exd4 5. Ng5 1/2-1/2`;
 
 export default function PgnInput({ onLoadPgn }) {
   const [pgn, setPgn] = useState("");

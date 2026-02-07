@@ -37,7 +37,8 @@
       "Bash(kubectl --namespace monitoring get secrets kube-prometheus-grafana -o jsonpath=\"{.data.admin-password}\":*)",
       "Bash(kubectl logs:*)",
       "Bash(gunzip:*)",
-      "Bash(helm upgrade:*)"
+      "Bash(helm upgrade:*)",
+      "Bash(kubectl top:*)"
     ]
   }
 }

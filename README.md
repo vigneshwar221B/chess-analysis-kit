@@ -4,6 +4,10 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 
 ![Chess Analysis UI](docs/frontend-ui.png)
 
+## Architecture
+
+![Architecture](docs/architecture.jpg)
+
 ## Features
 
 - **Interactive chessboard** with drag-and-drop and click-to-move support
@@ -36,7 +40,7 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **ElastiCache Redis** — encrypted session store with auth token in Secrets Manager
 - **Helm** — parameterized Kubernetes chart under `k8s/chess-app-helm-chart/`
 - **ArgoCD** — GitOps continuous delivery with auto-sync and self-heal
-- **GitHub Actions** — CI/CD pipeline (build → ECR → S3 → ArgoCD) and manual Terraform workflow
+- **GitHub Actions** — CI/CD pipeline (build → ECR → S3 → ArgoCD), manual Terraform workflow, and cluster bootstrap workflow
 
 ![ArgoCD Dashboard](docs/argo.png)
 
@@ -56,46 +60,6 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **IRSA** — pod-level IAM roles for Fluent Bit, ALB Controller, and backend pods
 - **SSM Parameter Store** — non-sensitive config; **Secrets Manager** — sensitive values
 - **Private subnets** — EKS nodes and Redis in private subnets behind NAT gateway
-
-## Architecture
-
-```
-                    +------------------+
-                    |     Browser      |
-                    +--------+---------+
-                             |
-              +--------------+--------------+
-              |                             |
-     CloudFront (CDN)                ALB (sticky sessions)
-              |                             |
-     +--------+--------+          +--------+-----------+
-     |  S3 Bucket       |          |  EKS Backend Pods  |
-     |  - React SPA     |          |  (Flask+SocketIO)  |
-     |  - Static assets  |          |  - Stockfish       |
-     +-----------------+          |  - python-chess    |
-                                   +--------+-----------+
-                                            |
-                                   +--------+-----------+
-                                   |  ElastiCache Redis  |
-                                   +--------------------+
-              |                             |
-     +--------+----------------------------+--------+
-     |              ArgoCD (GitOps)                  |
-     |  auto-sync from main branch                   |
-     +-----------------------------------------------+
-                          |
-     +--------------------+------------------------+
-     |           Observability Stack                |
-     |  Prometheus + Grafana    ← scrape /metrics   |
-     |  Fluent Bit (DaemonSet)  → CloudWatch Logs   |
-     +----------------------------------------------+
-                          |
-     +--------------------+------------------------+
-     |           CI/CD (GitHub Actions)             |
-     |  push to main → build → ECR → S3 → ArgoCD   |
-     |  Terraform → manual trigger                  |
-     +----------------------------------------------+
-```
 
 ## AWS Deployment
 
@@ -179,7 +143,7 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30443}]}}'
 
 # Deploy the app via ArgoCD
-kubectl apply -f k8s/argocd-app.yaml
+kubectl apply -f k8s/argocd-apps/chess-app.yaml
 ```
 
 ### 3. Deploy Monitoring (Optional)
@@ -286,7 +250,7 @@ chess-analysis-kit/
 │   ├── secrets.tf               # SSM Parameter Store + Secrets Manager
 │   └── iam.tf                   # GitHub OIDC provider + CI/CD roles
 ├── k8s/
-│   ├── helm-chart/              # Helm chart
+│   ├── chess-app-helm-chart/    # Helm chart
 │   │   ├── Chart.yaml
 │   │   ├── values.yaml
 │   │   └── templates/
@@ -297,11 +261,16 @@ chess-analysis-kit/
 │   │       ├── frontend-deployment.yaml
 │   │       ├── frontend-service.yaml
 │   │       └── grafana-dashboard-cm.yaml
-│   ├── argocd-app.yaml          # ArgoCD Application CR
+│   ├── argocd-apps/             # ArgoCD Application CRs
+│   │   ├── chess-app.yaml       # Main app (points to helm chart)
+│   │   ├── alb-controller.yaml  # AWS Load Balancer Controller
+│   │   ├── fluent-bit.yaml      # Fluent Bit → CloudWatch
+│   │   └── prometheus-stack.yaml # Prometheus + Grafana
 │   ├── prometheus-values.yaml   # Prometheus + Grafana config
 │   └── fluent-bit-values.yaml   # Fluent Bit → CloudWatch config
 ├── .github/workflows/
 │   ├── ci-cd.yml                # Build → ECR → S3 → ArgoCD (on push to main)
-│   └── terraform.yml            # Plan/Apply/Destroy (manual trigger)
+│   ├── terraform.yml            # Plan/Apply/Destroy (manual trigger)
+│   └── setup-cluster.yml        # Bootstrap ArgoCD on EKS (manual trigger)
 └── README.md
 ```

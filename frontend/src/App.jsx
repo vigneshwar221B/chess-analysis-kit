@@ -160,6 +160,10 @@ function App() {
 
   const handleSquareClick = useCallback(
     ({ square }) => {
+      if (selectedSquare === square) {
+        setSelectedSquare(null);
+        return;
+      }
       if (selectedSquare) {
         const moved = tryMove(selectedSquare, square);
         setSelectedSquare(moved ? null : square);
@@ -175,7 +179,11 @@ function App() {
 
   const handlePieceClick = useCallback(
     ({ square }) => {
-      if (selectedSquare && selectedSquare !== square) {
+      if (selectedSquare === square) {
+        setSelectedSquare(null);
+        return;
+      }
+      if (selectedSquare) {
         const moved = tryMove(selectedSquare, square);
         if (moved) {
           setSelectedSquare(null);
@@ -239,6 +247,27 @@ function App() {
     setBestMove(null);
     requestAnalysis(newGame.fen());
   };
+
+  // Compute legal move indicators for the selected piece
+  const legalMoveStyles = {};
+  if (selectedSquare) {
+    legalMoveStyles[selectedSquare] = { backgroundColor: "rgba(255, 255, 0, 0.4)" };
+    const moves = game.moves({ square: selectedSquare, verbose: true });
+    moves.forEach((move) => {
+      const isCapture = move.captured;
+      if (isCapture) {
+        legalMoveStyles[move.to] = {
+          background: "radial-gradient(transparent 51%, rgba(0,0,0,0.15) 51%)",
+          borderRadius: "50%",
+        };
+      } else {
+        legalMoveStyles[move.to] = {
+          background: "radial-gradient(rgba(0,0,0,0.2) 25%, transparent 25%)",
+          borderRadius: "50%",
+        };
+      }
+    });
+  }
 
   const customArrows = bestMove
     ? [{ startSquare: bestMove.from, endSquare: bestMove.to, color: "rgba(129, 140, 248, 0.6)" }]
@@ -311,9 +340,7 @@ function App() {
                   darkSquareStyle: { backgroundColor: "#7094A9" },
                   lightSquareStyle: { backgroundColor: "#D9E4E8" },
                   ...(selectedSquare && {
-                    customSquareStyles: {
-                      [selectedSquare]: { backgroundColor: "rgba(255, 255, 0, 0.4)" },
-                    },
+                    squareStyles: legalMoveStyles,
                   }),
                 }}
               />

@@ -20,7 +20,17 @@
       "Bash(kubectl apply:*)",
       "Bash(kubectl get pods:*)",
       "Bash(kubectl get:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(helm template:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(kubectl create:*)",
+      "Bash(kubectl patch:*)",
+      "Bash(kubectl wait:*)",
+      "Bash(kubectl -n argocd get secret:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(kubectl rollout:*)"
     ]
   }
 }

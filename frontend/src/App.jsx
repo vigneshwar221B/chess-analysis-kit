@@ -230,12 +230,14 @@ function App() {
   });
 
   const handleNewGame = () => {
-    setGame(new Chess());
+    const newGame = new Chess();
+    setGame(newGame);
     setMoveHistory([]);
     setPgnPositions(null);
     setCurrentMoveIndex(-1);
     setAnalysisLines([]);
     setBestMove(null);
+    requestAnalysis(newGame.fen());
   };
 
   const customArrows = bestMove
@@ -369,7 +371,7 @@ function App() {
           </div>
 
           {/* Sidebar */}
-          <div className="flex flex-col gap-3 w-[340px] flex-shrink-0">
+          <div className="flex flex-col gap-3 w-[340px] flex-shrink-0 h-[592px] overflow-y-auto">
             <AnalysisPanel
               lines={analysisLines}
               depth={analysisDepth}

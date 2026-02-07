@@ -41,7 +41,7 @@ export default function PgnInput({ onLoadPgn }) {
           value={pgn}
           onChange={(e) => setPgn(e.target.value)}
           placeholder="Paste PGN here..."
-          rows={18}
+          rows={12}
           className="w-full rounded bg-muted border border-border px-3 py-2.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/40 resize-none transition-colors"
         />
         {error && <p className="text-xs text-danger">{error}</p>}

@@ -30,7 +30,14 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(kubectl rollout:*)"
+      "Bash(kubectl rollout:*)",
+      "Bash(helm repo add:*)",
+      "Bash(helm repo update:*)",
+      "Bash(helm install:*)",
+      "Bash(kubectl --namespace monitoring get secrets kube-prometheus-grafana -o jsonpath=\"{.data.admin-password}\":*)",
+      "Bash(kubectl logs:*)",
+      "Bash(gunzip:*)",
+      "Bash(helm upgrade:*)"
     ]
   }
 }

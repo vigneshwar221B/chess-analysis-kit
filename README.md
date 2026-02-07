@@ -34,6 +34,12 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **ArgoCD** — GitOps continuous delivery with auto-sync and self-heal
 - **Kubernetes** — deployed on OrbStack (local) with NodePort services
 
+### Observability
+
+- **Prometheus** — metrics collection with custom scrape config for the backend
+- **Grafana** — pre-provisioned dashboard with request rates, latency percentiles, analysis duration, and error tracking
+- **prometheus_client** — custom metrics (analysis request counter, duration histogram) exposed at `/metrics`
+
 ## Architecture
 
 ```
@@ -58,6 +64,12 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
          |              ArgoCD (GitOps)                  |
          |  auto-sync from main branch                   |
          +-----------------------------------------------+
+                              |
+         +--------------------+------------------------+
+         |            Monitoring Stack                  |
+         |  Prometheus (:30090)  ←  scrape /metrics     |
+         |  Grafana (:30300)     ←  dashboards          |
+         +----------------------------------------------+
 ```
 
 ## Local Setup
@@ -99,17 +111,37 @@ kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "por
 kubectl apply -f helm/argocd-app.yaml
 ```
 
-### 3. Access the App
+### 3. Deploy Monitoring (Optional)
+
+```bash
+# Add Helm repo
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+# Install Prometheus + Grafana
+helm install kube-prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace \
+  -f helm/prometheus-values.yaml
+```
+
+A pre-built Grafana dashboard is auto-provisioned via ConfigMap when ArgoCD syncs the Helm chart.
+
+### 4. Access the App
 
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:30080 |
 | Backend Health | http://localhost:30501/health |
 | ArgoCD UI | https://localhost:30443 |
+| Prometheus | http://localhost:30090 |
+| Grafana | http://localhost:30300 |
 
 ArgoCD default credentials:
 - **Username:** `admin`
 - **Password:** `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
+
+Grafana default credentials:
+- **Username:** `admin`
+- **Password:** `kubectl -n monitoring get secret kube-prometheus-grafana -o jsonpath="{.data.admin-password}" | base64 -d`
 
 ### Running Without Kubernetes
 
@@ -158,6 +190,12 @@ chess-analysis-kit/
 │   │   ├── Chart.yaml
 │   │   ├── values.yaml
 │   │   └── templates/
-│   └── argocd-app.yaml      # ArgoCD Application CR
+│   │       ├── backend-deployment.yaml
+│   │       ├── backend-service.yaml
+│   │       ├── frontend-deployment.yaml
+│   │       ├── frontend-service.yaml
+│   │       └── grafana-dashboard-cm.yaml  # Auto-provisioned dashboard
+│   ├── argocd-app.yaml      # ArgoCD Application CR
+│   └── prometheus-values.yaml  # Prometheus + Grafana config
 └── README.md
 ```

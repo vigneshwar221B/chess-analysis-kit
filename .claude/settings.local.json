@@ -14,7 +14,13 @@
       "Bash(lsof:*)",
       "Bash(xargs:*)",
       "Bash(node -e:*)",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(kubectl cluster-info:*)",
+      "Bash(docker build:*)",
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl get pods:*)",
+      "Bash(kubectl get:*)",
+      "Bash(curl:*)"
     ]
   }
 }

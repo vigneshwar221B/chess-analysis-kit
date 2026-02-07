@@ -1,0 +1,19 @@
+backend:
+  image: chess-backend
+  tag: latest
+  replicas: 1
+  port: 5001
+  service:
+    type: NodePort
+    nodePort: 30501
+  env:
+    stockfishPath: /usr/games/stockfish
+
+frontend:
+  image: chess-frontend
+  tag: latest
+  replicas: 1
+  port: 80
+  service:
+    type: NodePort
+    nodePort: 30080

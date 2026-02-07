@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chess-frontend
+spec:
+  type: {{ .Values.frontend.service.type }}
+  selector:
+    app: chess-frontend
+  ports:
+    - port: {{ .Values.frontend.port }}
+      targetPort: {{ .Values.frontend.port }}
+      nodePort: {{ .Values.frontend.service.nodePort }}

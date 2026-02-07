@@ -18,6 +18,7 @@ infra/.terraform.lock.hcl
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 

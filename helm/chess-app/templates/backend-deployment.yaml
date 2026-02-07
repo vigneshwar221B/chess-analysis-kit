@@ -18,10 +18,13 @@ spec:
         prometheus.io/port: "{{ .Values.backend.port }}"
         prometheus.io/path: "/metrics"
     spec:
+      {{- if .Values.backend.serviceAccount.create }}
+      serviceAccountName: chess-backend
+      {{- end }}
       containers:
         - name: backend
           image: "{{ .Values.backend.image }}:{{ .Values.backend.tag }}"
-          imagePullPolicy: Never
+          imagePullPolicy: {{ .Values.backend.imagePullPolicy }}
           ports:
             - containerPort: {{ .Values.backend.port }}
           env:

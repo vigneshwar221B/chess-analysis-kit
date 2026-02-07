@@ -30,56 +30,114 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 
 ### Infrastructure
 - **Docker** — multi-stage frontend build (Node + nginx), backend with Stockfish pre-installed
+- **Terraform** — modular IaC using official AWS modules (VPC, EKS, ALB, S3, CloudFront, ElastiCache)
+- **AWS EKS** — managed Kubernetes with IRSA for pod-level IAM, ALB for WebSocket traffic
+- **S3 + CloudFront** — static frontend hosting with global CDN and SPA routing
+- **ElastiCache Redis** — encrypted session store with auth token in Secrets Manager
 - **Helm** — parameterized Kubernetes chart under `helm/chess-app/`
 - **ArgoCD** — GitOps continuous delivery with auto-sync and self-heal
-- **Kubernetes** — deployed on OrbStack (local) with NodePort services
+- **GitHub Actions** — CI/CD pipeline (build → ECR → S3 → ArgoCD) and manual Terraform workflow
 
 ### Observability
 
 - **Prometheus** — metrics collection with custom scrape config for the backend
 - **Grafana** — pre-provisioned dashboard with request rates, latency percentiles, analysis duration, and error tracking
 - **prometheus_client** — custom metrics (analysis request counter, duration histogram) exposed at `/metrics`
-- **Fluent Bit** — DaemonSet log collector with Kubernetes metadata enrichment, ready for AWS CloudWatch
-- **Structured JSON logging** — backend emits JSON logs for machine-parseable log aggregation
+- **Fluent Bit** — DaemonSet log collector → AWS CloudWatch Logs with Kubernetes metadata enrichment
+- **Structured JSON logging** — backend emits JSON logs for CloudWatch Insights queries
+
+### Security
+
+- **GitHub OIDC** — keyless CI/CD authentication to AWS (no long-lived IAM keys)
+- **IRSA** — pod-level IAM roles for Fluent Bit, ALB Controller, and backend pods
+- **SSM Parameter Store** — non-sensitive config; **Secrets Manager** — sensitive values
+- **Private subnets** — EKS nodes and Redis in private subnets behind NAT gateway
 
 ## Architecture
 
 ```
-                        +------------------+
-                        |     Browser      |
-                        +--------+---------+
-                                 |
-                  +--------------+--------------+
-                  |                             |
-           localhost:30080                localhost:30501
-                  |                             |
-         +-------+--------+          +---------+----------+
-         |  Frontend Pod   |          |   Backend Pod      |
-         |  (nginx)        |          |   (Flask+SocketIO) |
-         |  - React SPA    |  WS/HTTP |   - Stockfish      |
-         |  - Static assets| -------> |   - python-chess   |
-         +----------------+          +--------------------+
-                  |                             |
-         Helm Managed              Helm Managed
-                  |                             |
-         +--------+----------------------------+--------+
-         |              ArgoCD (GitOps)                  |
-         |  auto-sync from main branch                   |
-         +-----------------------------------------------+
-                              |
-         +--------------------+------------------------+
-         |            Monitoring Stack                  |
-         |  Prometheus (:30090)  ←  scrape /metrics     |
-         |  Grafana (:30300)     ←  dashboards          |
-         +----------------------------------------------+
-                              |
-         +--------------------+------------------------+
-         |            Logging Stack                     |
-         |  Fluent Bit (DaemonSet)                      |
-         |  tail /var/log/containers → stdout           |
-         |  (→ CloudWatch on AWS)                       |
-         +----------------------------------------------+
+                    +------------------+
+                    |     Browser      |
+                    +--------+---------+
+                             |
+              +--------------+--------------+
+              |                             |
+     CloudFront (CDN)                ALB (sticky sessions)
+              |                             |
+     +--------+--------+          +--------+-----------+
+     |  S3 Bucket       |          |  EKS Backend Pods  |
+     |  - React SPA     |          |  (Flask+SocketIO)  |
+     |  - Static assets  |          |  - Stockfish       |
+     +-----------------+          |  - python-chess    |
+                                   +--------+-----------+
+                                            |
+                                   +--------+-----------+
+                                   |  ElastiCache Redis  |
+                                   +--------------------+
+              |                             |
+     +--------+----------------------------+--------+
+     |              ArgoCD (GitOps)                  |
+     |  auto-sync from main branch                   |
+     +-----------------------------------------------+
+                          |
+     +--------------------+------------------------+
+     |           Observability Stack                |
+     |  Prometheus + Grafana    ← scrape /metrics   |
+     |  Fluent Bit (DaemonSet)  → CloudWatch Logs   |
+     +----------------------------------------------+
+                          |
+     +--------------------+------------------------+
+     |           CI/CD (GitHub Actions)             |
+     |  push to main → build → ECR → S3 → ArgoCD   |
+     |  Terraform → manual trigger                  |
+     +----------------------------------------------+
 ```
+
+## AWS Deployment
+
+### Prerequisites
+
+1. AWS account with CLI configured
+2. Create S3 bucket and DynamoDB table for Terraform state:
+
+```bash
+aws s3 mb s3://chess-app-terraform-state --region us-east-1
+aws s3api put-bucket-versioning --bucket chess-app-terraform-state --versioning-configuration Status=Enabled
+aws dynamodb create-table --table-name chess-app-terraform-locks \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST --region us-east-1
+```
+
+### Deploy Infrastructure
+
+```bash
+cd infrastructure
+cp terraform.tfvars.example terraform.tfvars  # edit with your values
+terraform init
+terraform plan
+terraform apply
+```
+
+Or trigger the **Terraform** workflow manually from GitHub Actions.
+
+### CI/CD Flow
+
+On every push to `main`:
+
+1. **Build** — Docker images tagged with Git SHA, pushed to ECR
+2. **Deploy frontend** — Vite build → S3 sync → CloudFront invalidation
+3. **Deploy backend** — Update Helm `values.yaml` with new image tag → commit → ArgoCD auto-syncs to EKS
+4. **Verify** — Wait for rollout, health check the ALB endpoint
+
+### GitHub Secrets
+
+| Secret             | Description                                                                       |
+|--------------------|-----------------------------------------------------------------------------------|
+| `AWS_ROLE_ARN`     | IAM role for CI/CD (`terraform output github_actions_cicd_role_arn`)               |
+| `TF_AWS_ROLE_ARN`  | IAM role for Terraform (from `terraform output github_actions_terraform_role_arn`) |
+
+---
 
 ## Local Setup
 
@@ -190,36 +248,56 @@ The frontend runs on `http://localhost:5173` and connects to the backend at `htt
 
 ```
 chess-analysis-kit/
-├── frontend/                # React + Vite
+├── frontend/                    # React + Vite
 │   ├── src/
-│   │   ├── App.jsx          # Main app — board, controls, state
+│   │   ├── App.jsx              # Main app — board, controls, state
 │   │   ├── components/
-│   │   │   ├── AnalysisPanel.jsx   # Engine lines display
-│   │   │   ├── EvalBar.jsx         # Evaluation bar
-│   │   │   ├── MoveList.jsx        # PGN move navigator
-│   │   │   ├── PgnInput.jsx        # PGN import form
-│   │   │   └── ui/                 # Reusable UI primitives
+│   │   │   ├── AnalysisPanel.jsx
+│   │   │   ├── EvalBar.jsx
+│   │   │   ├── MoveList.jsx
+│   │   │   ├── PgnInput.jsx
+│   │   │   └── ui/              # Reusable UI primitives
 │   │   └── lib/
-│   ├── Dockerfile           # Multi-stage: Node build + nginx
+│   ├── Dockerfile               # Multi-stage: Node build + nginx
 │   └── nginx.conf
 ├── backend/
-│   ├── app.py               # Flask + SocketIO server
-│   ├── engine.py            # Stockfish subprocess wrapper
-│   ├── config.py            # Engine configuration
+│   ├── app.py                   # Flask + SocketIO server
+│   ├── engine.py                # Stockfish subprocess wrapper
+│   ├── config.py                # Engine configuration
 │   ├── requirements.txt
-│   └── Dockerfile           # Python + Stockfish
+│   └── Dockerfile               # Python + Stockfish
+├── infrastructure/              # Terraform (AWS)
+│   ├── main.tf                  # Root module
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── providers.tf             # AWS provider + default tags
+│   ├── backend.tf               # S3 remote state + DynamoDB lock
+│   ├── vpc.tf                   # VPC, subnets, NAT (terraform-aws-modules/vpc)
+│   ├── eks.tf                   # EKS cluster, node groups, IRSA roles
+│   ├── ecr.tf                   # ECR repositories + lifecycle policies
+│   ├── frontend.tf              # S3 + CloudFront (OAC, SPA routing)
+│   ├── alb.tf                   # ALB with sticky sessions for WebSocket
+│   ├── redis.tf                 # ElastiCache Redis
+│   ├── monitoring.tf            # CloudWatch log groups + Fluent Bit IAM
+│   ├── secrets.tf               # SSM Parameter Store + Secrets Manager
+│   └── iam.tf                   # GitHub OIDC provider + CI/CD roles
 ├── helm/
-│   ├── chess-app/           # Helm chart
+│   ├── chess-app/               # Helm chart
 │   │   ├── Chart.yaml
 │   │   ├── values.yaml
 │   │   └── templates/
 │   │       ├── backend-deployment.yaml
 │   │       ├── backend-service.yaml
+│   │       ├── backend-serviceaccount.yaml
+│   │       ├── backend-hpa.yaml
 │   │       ├── frontend-deployment.yaml
 │   │       ├── frontend-service.yaml
-│   │       └── grafana-dashboard-cm.yaml  # Auto-provisioned dashboard
-│   ├── argocd-app.yaml      # ArgoCD Application CR
-│   ├── prometheus-values.yaml  # Prometheus + Grafana config
-│   └── fluent-bit-values.yaml  # Fluent Bit log collector config
+│   │       └── grafana-dashboard-cm.yaml
+│   ├── argocd-app.yaml          # ArgoCD Application CR
+│   ├── prometheus-values.yaml   # Prometheus + Grafana config
+│   └── fluent-bit-values.yaml   # Fluent Bit → CloudWatch config
+├── .github/workflows/
+│   ├── ci-cd.yml                # Build → ECR → S3 → ArgoCD (on push to main)
+│   └── terraform.yml            # Plan/Apply/Destroy (manual trigger)
 └── README.md
 ```

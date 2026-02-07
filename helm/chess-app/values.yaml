@@ -3,6 +3,7 @@ backend:
   tag: latest
   replicas: 1
   port: 5001
+  imagePullPolicy: IfNotPresent
   service:
     type: NodePort
     nodePort: 30501
@@ -20,6 +21,10 @@ backend:
     minReplicas: 1
     maxReplicas: 5
     targetCPUUtilizationPercentage: 60
+  # IRSA role ARN for backend pods (set by Terraform on AWS)
+  serviceAccount:
+    create: true
+    irsaRoleArn: ""
 
 frontend:
   image: chess-frontend

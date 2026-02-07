@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and fill in values
+# DO NOT commit terraform.tfvars to git
+
+aws_region              = "us-east-1"
+environment             = "production"
+project_name            = "chess-app"
+vpc_cidr                = "10.0.0.0/16"
+availability_zones      = ["us-east-1a", "us-east-1b", "us-east-1c"]
+eks_cluster_version     = "1.31"
+eks_node_instance_types = ["t3.medium"]
+eks_node_min_size       = 2
+eks_node_max_size       = 5
+eks_node_desired_size   = 2
+redis_node_type         = "cache.t3.micro"
+github_org              = "vigneshwar221B"
+github_repo             = "chess-analysis-kit"
+
+# Optional: custom domain HTTPS
+# acm_certificate_arn = "arn:aws:acm:us-east-1:123456789:certificate/abc-def"

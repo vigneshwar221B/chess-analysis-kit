@@ -1,0 +1,136 @@
+# name: Terraform
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       action:
+#         description: "Terraform action"
+#         required: true
+#         type: choice
+#         options:
+#           - plan
+#           - apply
+#           - destroy
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# env:
+#   AWS_REGION: us-east-1
+#   TF_VERSION: "1.9.0"
+
+# jobs:
+#   terraform:
+#     name: Terraform ${{ github.event.inputs.action }}
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: infrastructure
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: ${{ env.TF_VERSION }}
+
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: ${{ secrets.TF_AWS_ROLE_ARN }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       - name: Terraform Init
+#         run: terraform init
+
+#       - name: Terraform Format Check
+#         run: terraform fmt -check -recursive
+
+#       - name: Terraform Validate
+#         run: terraform validate
+
+#       - name: Terraform Plan
+#         if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+#         run: terraform plan -out=tfplan
+
+#       - name: Terraform Apply
+#         if: github.event.inputs.action == 'apply'
+#         run: terraform apply -auto-approve tfplan
+
+#       - name: Terraform Destroy
+#         if: github.event.inputs.action == 'destroy'
+#         run: terraform destroy -auto-approve
+
+#       - name: Show Outputs
+#         if: github.event.inputs.action == 'apply'
+#         run: |
+#           echo "## Terraform Outputs" >> "$GITHUB_STEP_SUMMARY"
+#           echo '```' >> "$GITHUB_STEP_SUMMARY"
+#           terraform output >> "$GITHUB_STEP_SUMMARY"
+#           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+#   post-apply:
+#     name: Post-Apply Setup
+#     runs-on: ubuntu-latest
+#     needs: terraform
+#     if: github.event.inputs.action == 'apply'
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: ${{ secrets.TF_AWS_ROLE_ARN }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       - name: Update kubeconfig
+#         run: aws eks update-kubeconfig --name chess-app-eks --region ${{ env.AWS_REGION }}
+
+#       - name: Install AWS Load Balancer Controller
+#         run: |
+#           helm repo add eks https://aws.github.io/eks-charts
+#           helm repo update
+
+#           ALB_ROLE_ARN=$(cd infrastructure && terraform output -raw alb_controller_role_arn)
+
+#           helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+#             -n kube-system \
+#             --set clusterName=chess-app-eks \
+#             --set serviceAccount.create=true \
+#             --set serviceAccount.name=aws-load-balancer-controller \
+#             --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${ALB_ROLE_ARN}"
+
+#       - name: Install ArgoCD
+#         run: |
+#           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+#           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#           kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+#           kubectl apply -f helm/argocd-app.yaml
+
+#       - name: Install Fluent Bit with CloudWatch
+#         run: |
+#           FLUENT_BIT_ROLE_ARN=$(cd infrastructure && terraform output -raw fluent_bit_role_arn)
+
+#           helm repo add fluent https://fluent.github.io/helm-charts
+#           helm repo update
+
+#           helm upgrade --install fluent-bit fluent/fluent-bit \
+#             --namespace logging --create-namespace \
+#             -f helm/fluent-bit-values.yaml \
+#             --set serviceAccount.create=true \
+#             --set serviceAccount.name=fluent-bit \
+#             --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=${FLUENT_BIT_ROLE_ARN}"
+
+#       - name: Install Prometheus + Grafana
+#         run: |
+#           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#           helm repo update
+
+#           helm upgrade --install kube-prometheus prometheus-community/kube-prometheus-stack \
+#             --namespace monitoring --create-namespace \
+#             -f helm/prometheus-values.yaml

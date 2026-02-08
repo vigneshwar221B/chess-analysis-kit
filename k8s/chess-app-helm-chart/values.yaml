@@ -26,11 +26,3 @@ backend:
     create: true
     irsaRoleArn: ""
 
-frontend:
-  image: chess-frontend
-  tag: latest
-  replicas: 1
-  port: 80
-  service:
-    type: NodePort
-    nodePort: 30080

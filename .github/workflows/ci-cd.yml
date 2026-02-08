@@ -46,12 +46,10 @@ jobs:
         id: config
         run: |
           BACKEND_REPO=$(aws ssm get-parameter --name /chess-app/ecr-backend-repo --query 'Parameter.Value' --output text)
-          FRONTEND_REPO=$(aws ssm get-parameter --name /chess-app/ecr-frontend-repo --query 'Parameter.Value' --output text)
           BACKEND_URL=$(aws ssm get-parameter --name /chess-app/backend-url --query 'Parameter.Value' --output text)
           FRONTEND_BUCKET=$(aws ssm get-parameter --name /chess-app/frontend-bucket --query 'Parameter.Value' --output text 2>/dev/null || echo "")
           CLOUDFRONT_ID=$(aws ssm get-parameter --name /chess-app/cloudfront-distribution-id --query 'Parameter.Value' --output text 2>/dev/null || echo "")
           echo "backend-repo=${BACKEND_REPO}" >> "$GITHUB_OUTPUT"
-          echo "frontend-repo=${FRONTEND_REPO}" >> "$GITHUB_OUTPUT"
           echo "backend-url=${BACKEND_URL}" >> "$GITHUB_OUTPUT"
           echo "frontend-bucket=${FRONTEND_BUCKET}" >> "$GITHUB_OUTPUT"
           echo "cloudfront-id=${CLOUDFRONT_ID}" >> "$GITHUB_OUTPUT"

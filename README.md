@@ -69,7 +69,7 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 2. Create S3 bucket and DynamoDB table for Terraform state:
 
 ```bash
-aws s3 mb s3://chess-app-terraform-state --region us-east-1
+aws s3 mb s3://chess-app-kit-terraform-state --region us-east-1
 aws s3api put-bucket-versioning --bucket chess-app-terraform-state --versioning-configuration Status=Enabled
 aws dynamodb create-table --table-name chess-app-terraform-locks \
   --attribute-definitions AttributeName=LockID,AttributeType=S \

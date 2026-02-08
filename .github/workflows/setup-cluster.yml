@@ -1,68 +1,68 @@
-# name: Setup Cluster
+name: Setup Cluster
 
-# on:
-#   workflow_dispatch:
+on:
+  workflow_dispatch:
 
-# permissions:
-#   id-token: write
-#   contents: read
+permissions:
+  id-token: write
+  contents: read
 
-# env:
-#   AWS_REGION: us-east-1
-#   EKS_CLUSTER_NAME: chess-app-eks
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: chess-analysis-kit-eks
 
-# jobs:
-#   bootstrap-argocd:
-#     name: Bootstrap ArgoCD
-#     runs-on: ubuntu-latest
+jobs:
+  bootstrap-argocd:
+    name: Bootstrap ArgoCD
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-#       - name: Configure AWS credentials
-#         uses: aws-actions/configure-aws-credentials@v4
-#         with:
-#           role-to-assume: ${{ secrets.TF_AWS_ROLE_ARN }}
-#           aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TF_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-#       - name: Update kubeconfig
-#         run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-#       - name: Get Terraform outputs
-#         id: tf-outputs
-#         working-directory: infrastructure
-#         run: |
-#           terraform init -backend=true
-#           echo "alb_role_arn=$(terraform output -raw alb_controller_role_arn)" >> "$GITHUB_OUTPUT"
-#           echo "fluent_bit_role_arn=$(terraform output -raw fluent_bit_role_arn)" >> "$GITHUB_OUTPUT"
+      - name: Get Terraform outputs
+        id: tf-outputs
+        working-directory: infrastructure
+        run: |
+          terraform init -backend=true
+          echo "alb_role_arn=$(terraform output -raw alb_controller_role_arn)" >> "$GITHUB_OUTPUT"
+          echo "fluent_bit_role_arn=$(terraform output -raw fluent_bit_role_arn)" >> "$GITHUB_OUTPUT"
 
-#       - name: Install ArgoCD
-#         run: |
-#           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-#           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-#           kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+      - name: Install ArgoCD
+        run: |
+          kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
 
-#       - name: Deploy ArgoCD Applications
-#         run: |
-#           ALB_ROLE_ARN="${{ steps.tf-outputs.outputs.alb_role_arn }}"
-#           FLUENT_BIT_ROLE_ARN="${{ steps.tf-outputs.outputs.fluent_bit_role_arn }}"
+      - name: Deploy ArgoCD Applications
+        run: |
+          ALB_ROLE_ARN="${{ steps.tf-outputs.outputs.alb_role_arn }}"
+          FLUENT_BIT_ROLE_ARN="${{ steps.tf-outputs.outputs.fluent_bit_role_arn }}"
 
-#           for file in k8s/argocd-apps/*.yaml; do
-#             sed "s|{{ALB_CONTROLLER_ROLE_ARN}}|${ALB_ROLE_ARN}|g; s|{{FLUENT_BIT_ROLE_ARN}}|${FLUENT_BIT_ROLE_ARN}|g" "$file" | kubectl apply -f -
-#           done
+          for file in k8s/argocd-apps/*.yaml; do
+            sed "s|{{ALB_CONTROLLER_ROLE_ARN}}|${ALB_ROLE_ARN}|g; s|{{FLUENT_BIT_ROLE_ARN}}|${FLUENT_BIT_ROLE_ARN}|g" "$file" | kubectl apply -f -
+          done
 
-#       - name: ArgoCD Summary
-#         run: |
-#           echo "## ArgoCD Bootstrapped" >> "$GITHUB_STEP_SUMMARY"
-#           echo "" >> "$GITHUB_STEP_SUMMARY"
-#           echo "ArgoCD is now managing:" >> "$GITHUB_STEP_SUMMARY"
-#           echo "- **chess-app** (main application)" >> "$GITHUB_STEP_SUMMARY"
-#           echo "- **aws-load-balancer-controller** (kube-system)" >> "$GITHUB_STEP_SUMMARY"
-#           echo "- **fluent-bit** (logging → CloudWatch)" >> "$GITHUB_STEP_SUMMARY"
-#           echo "- **kube-prometheus-stack** (monitoring)" >> "$GITHUB_STEP_SUMMARY"
-#           echo "" >> "$GITHUB_STEP_SUMMARY"
-#           echo "ArgoCD admin password:" >> "$GITHUB_STEP_SUMMARY"
-#           echo '```' >> "$GITHUB_STEP_SUMMARY"
-#           echo "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d" >> "$GITHUB_STEP_SUMMARY"
-#           echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: ArgoCD Summary
+        run: |
+          echo "## ArgoCD Bootstrapped" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "ArgoCD is now managing:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **chess-app** (main application)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **aws-load-balancer-controller** (kube-system)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **fluent-bit** (logging → CloudWatch)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **kube-prometheus-stack** (monitoring)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "ArgoCD admin password:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

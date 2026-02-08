@@ -14,7 +14,7 @@
 
 # env:
 #   AWS_REGION: us-east-1
-#   EKS_CLUSTER_NAME: chess-app-eks
+#   EKS_CLUSTER_NAME: chess-analysis-kit-eks
 
 # jobs:
 #   # ── Build images and deploy frontend to S3 ──────────

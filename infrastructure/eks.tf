@@ -23,7 +23,7 @@ module "eks" {
   # Managed node group
   eks_managed_node_groups = {
     workers = {
-      name           = "${var.project_name}-workers"
+      name           = "workers"
       instance_types = var.eks_node_instance_types
       min_size       = var.eks_node_min_size
       max_size       = var.eks_node_max_size

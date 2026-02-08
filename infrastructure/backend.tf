@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "chess-app-terraform-state"
+    bucket         = "chess-app-kit-terraform-state"
     key            = "production/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "chess-app-terraform-locks"

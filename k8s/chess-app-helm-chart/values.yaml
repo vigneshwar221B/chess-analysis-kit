@@ -21,6 +21,8 @@ backend:
     minReplicas: 1
     maxReplicas: 5
     targetCPUUtilizationPercentage: 60
+  # ALB target group ARN (set by CI/CD from SSM)
+  targetGroupArn: ""
   # IRSA role ARN for backend pods (set by Terraform on AWS)
   serviceAccount:
     create: true

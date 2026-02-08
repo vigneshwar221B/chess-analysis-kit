@@ -1,0 +1,12 @@
+{{- if .Values.backend.targetGroupArn }}
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: chess-backend
+spec:
+  serviceRef:
+    name: chess-backend
+    port: {{ .Values.backend.port }}
+  targetGroupARN: {{ .Values.backend.targetGroupArn }}
+  targetType: ip
+{{- end }}

@@ -95,21 +95,24 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Get ECR repo URL
+      - name: Get config from SSM
         id: config
         run: |
           BACKEND_REPO=$(aws ssm get-parameter --name /chess-app/ecr-backend-repo --query 'Parameter.Value' --output text)
+          TARGET_GROUP_ARN=$(aws ssm get-parameter --name /chess-app/backend-target-group-arn --query 'Parameter.Value' --output text)
           echo "backend-repo=${BACKEND_REPO}" >> "$GITHUB_OUTPUT"
+          echo "target-group-arn=${TARGET_GROUP_ARN}" >> "$GITHUB_OUTPUT"
 
-      - name: Update backend image tag in values.yaml
+      - name: Update backend values in values.yaml
         env:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image-tag }}
           BACKEND_REPO: ${{ steps.config.outputs.backend-repo }}
+          TARGET_GROUP_ARN: ${{ steps.config.outputs.target-group-arn }}
         run: |
           cd k8s/chess-app-helm-chart
-          # Update image and tag under backend section
           yq -i '.backend.image = strenv(BACKEND_REPO)' values.yaml
           yq -i '.backend.tag = strenv(IMAGE_TAG)' values.yaml
+          yq -i '.backend.targetGroupArn = strenv(TARGET_GROUP_ARN)' values.yaml
 
       - name: Commit and push
         run: |

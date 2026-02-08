@@ -21,8 +21,7 @@ import AnalysisPanel from "@/components/AnalysisPanel";
 import PgnInput from "@/components/PgnInput";
 import MoveList from "@/components/MoveList";
 
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:5001";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 function App() {
   const [game, setGame] = useState(new Chess());

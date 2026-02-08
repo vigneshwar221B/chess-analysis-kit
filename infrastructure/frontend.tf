@@ -77,6 +77,19 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
+  # Backend ALB origin for API/WebSocket proxying
+  origin {
+    domain_name = module.alb.dns_name
+    origin_id   = "alb-backend"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
   # Default: serve index.html with short cache
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
@@ -88,6 +101,45 @@ resource "aws_cloudfront_distribution" "frontend" {
     min_ttl     = 0
     default_ttl = 0
     max_ttl     = 300
+
+    forwarded_values {
+      query_string = false
+      cookies { forward = "none" }
+    }
+  }
+
+  # Socket.IO — proxy to ALB (no caching, forward all)
+  ordered_cache_behavior {
+    path_pattern           = "/socket.io/*"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "alb-backend"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = false
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Origin"]
+      cookies { forward = "all" }
+    }
+  }
+
+  # Backend health check — proxy to ALB
+  ordered_cache_behavior {
+    path_pattern           = "/health"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "alb-backend"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = false
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
 
     forwarded_values {
       query_string = false

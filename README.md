@@ -33,10 +33,10 @@ A real-time chess analysis application powered by the Stockfish engine. Play mov
 - **Eventlet** for async WebSocket handling
 
 ### Infrastructure
-- **Docker** — multi-stage frontend build (Node + nginx), backend with Stockfish pre-installed
+- **Docker** — backend container with Stockfish pre-installed
 - **Terraform** — modular IaC using official AWS modules (VPC, EKS, ALB, S3, CloudFront, ElastiCache)
 - **AWS EKS** — managed Kubernetes with IRSA for pod-level IAM, ALB for WebSocket traffic
-- **S3 + CloudFront** — static frontend hosting with global CDN and SPA routing
+- **S3 + CloudFront** — static frontend hosting with global CDN, SPA routing, and backend API proxying
 - **ElastiCache Redis** — encrypted session store with auth token in Secrets Manager
 - **Helm** — parameterized Kubernetes chart under `k8s/chess-app-helm-chart/`
 - **ArgoCD** — GitOps continuous delivery with auto-sync and self-heal
@@ -118,67 +118,62 @@ On every push to `main`:
 | [Helm](https://helm.sh/docs/intro/install/) | Deploy the Helm chart |
 | [kubectl](https://kubernetes.io/docs/tasks/tools/) | Interact with the cluster |
 
-### 1. Build Docker Images
+### 1. Build and Deploy Backend
 
 ```bash
-# From the project root
-docker build -t chess-frontend:latest ./frontend
+# Build the backend image
 docker build -t chess-backend:latest ./backend
-```
 
-### 2. Deploy with Helm
-
-```bash
+# Deploy to local K8s with Helm
 helm install chess-app ./k8s/chess-app-helm-chart
 ```
 
-Or apply the raw manifests with ArgoCD:
+Or use ArgoCD:
 
 ```bash
 # Install ArgoCD (one-time)
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-# Expose ArgoCD UI
-kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort", "ports": [{"port": 443, "targetPort": 8080, "nodePort": 30443}]}}'
-
 # Deploy the app via ArgoCD
 kubectl apply -f k8s/argocd-apps/chess-app.yaml
 ```
 
+### 2. Run Frontend
+
+The frontend is not deployed to Kubernetes — it runs as a standalone Vite dev server locally:
+
+```bash
+cd frontend
+npm install
+VITE_BACKEND_URL=http://localhost:30501 npm run dev
+```
+
+The frontend runs on `http://localhost:5173` and connects to the backend on the cluster via NodePort.
+
 ### 3. Deploy Monitoring (Optional)
 
 ```bash
-# Add Helm repo
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-
-# Install Prometheus + Grafana
 helm install kube-prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring --create-namespace \
   -f k8s/prometheus-values.yaml
 ```
 
-A pre-built Grafana dashboard is auto-provisioned via ConfigMap when ArgoCD syncs the Helm chart.
-
 ### 4. Deploy Logging (Optional)
 
 ```bash
-# Add Helm repo
 helm repo add fluent https://fluent.github.io/helm-charts
-
-# Install Fluent Bit
 helm install fluent-bit fluent/fluent-bit \
   --namespace logging --create-namespace \
   -f k8s/fluent-bit-values.yaml
 ```
 
-Fluent Bit collects container logs as a DaemonSet, enriches them with Kubernetes metadata, and outputs to stdout. Switch to CloudWatch by uncommenting the output block in `k8s/fluent-bit-values.yaml`.
-
-### 5. Access the App
+### 5. Access Services
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:30080 |
+| Frontend | http://localhost:5173 |
 | Backend Health | http://localhost:30501/health |
 | ArgoCD UI | https://localhost:30443 |
 | Prometheus | http://localhost:30090 |
@@ -226,8 +221,7 @@ chess-analysis-kit/
 │   │   │   ├── PgnInput.jsx
 │   │   │   └── ui/              # Reusable UI primitives
 │   │   └── lib/
-│   ├── Dockerfile               # Multi-stage: Node build + nginx
-│   └── nginx.conf
+│   └── Dockerfile               # Node build (used locally)
 ├── backend/
 │   ├── app.py                   # Flask + SocketIO server
 │   ├── engine.py                # Stockfish subprocess wrapper
@@ -258,8 +252,7 @@ chess-analysis-kit/
 │   │       ├── backend-service.yaml
 │   │       ├── backend-serviceaccount.yaml
 │   │       ├── backend-hpa.yaml
-│   │       ├── frontend-deployment.yaml
-│   │       ├── frontend-service.yaml
+│   │       ├── backend-targetgroupbinding.yaml
 │   │       └── grafana-dashboard-cm.yaml
 │   ├── argocd-apps/             # ArgoCD Application CRs
 │   │   ├── chess-app.yaml       # Main app (points to helm chart)

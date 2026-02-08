@@ -11,6 +11,7 @@ on:
 permissions:
   id-token: write
   contents: write
+  deployments: write
 
 env:
   AWS_REGION: us-east-1
@@ -23,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image-tag: ${{ steps.tag.outputs.tag }}
+      frontend-url: ${{ steps.config.outputs.frontend-url }}
 
     steps:
       - name: Checkout
@@ -48,9 +50,11 @@ jobs:
           BACKEND_REPO=$(aws ssm get-parameter --name /chess-app/ecr-backend-repo --query 'Parameter.Value' --output text)
           FRONTEND_BUCKET=$(aws ssm get-parameter --name /chess-app/frontend-bucket --query 'Parameter.Value' --output text 2>/dev/null || echo "")
           CLOUDFRONT_ID=$(aws ssm get-parameter --name /chess-app/cloudfront-distribution-id --query 'Parameter.Value' --output text 2>/dev/null || echo "")
+          FRONTEND_URL=$(aws ssm get-parameter --name /chess-app/frontend-url --query 'Parameter.Value' --output text 2>/dev/null || echo "")
           echo "backend-repo=${BACKEND_REPO}" >> "$GITHUB_OUTPUT"
           echo "frontend-bucket=${FRONTEND_BUCKET}" >> "$GITHUB_OUTPUT"
           echo "cloudfront-id=${CLOUDFRONT_ID}" >> "$GITHUB_OUTPUT"
+          echo "frontend-url=${FRONTEND_URL}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push backend image
         run: |
@@ -125,7 +129,10 @@ jobs:
   verify:
     name: Verify Deployment
     runs-on: ubuntu-latest
-    needs: update-helm
+    needs: [build-and-push, update-helm]
+    environment:
+      name: production
+      url: https://${{ needs.build-and-push.outputs.frontend-url }}
 
     steps:
       - name: Configure AWS credentials

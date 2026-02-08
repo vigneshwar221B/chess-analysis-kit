@@ -10,6 +10,30 @@ module "eks" {
 
   cluster_endpoint_public_access = true
 
+  # Allow both GitHub Actions roles to access the cluster
+  enable_cluster_creator_admin_permissions = true
+
+  access_entries = {
+    github_terraform = {
+      principal_arn = aws_iam_role.github_actions_terraform.arn
+      policy_associations = {
+        admin = {
+          policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
+        }
+      }
+    }
+    github_cicd = {
+      principal_arn = aws_iam_role.github_actions_cicd.arn
+      policy_associations = {
+        admin = {
+          policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
+        }
+      }
+    }
+  }
+
   # Control plane logging
   cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 

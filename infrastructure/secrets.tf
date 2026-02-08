@@ -35,6 +35,27 @@ resource "aws_ssm_parameter" "ecr_frontend_repo" {
   tags  = local.tags
 }
 
+resource "aws_ssm_parameter" "backend_target_group_arn" {
+  name  = "/chess-app/backend-target-group-arn"
+  type  = "String"
+  value = module.alb.target_groups["backend"].arn
+  tags  = local.tags
+}
+
+resource "aws_ssm_parameter" "frontend_bucket" {
+  name  = "/chess-app/frontend-bucket"
+  type  = "String"
+  value = module.frontend_bucket.s3_bucket_id
+  tags  = local.tags
+}
+
+resource "aws_ssm_parameter" "cloudfront_distribution_id" {
+  name  = "/chess-app/cloudfront-distribution-id"
+  type  = "String"
+  value = aws_cloudfront_distribution.frontend.id
+  tags  = local.tags
+}
+
 # ── Secrets Manager (sensitive values) ────────────────
 
 resource "aws_secretsmanager_secret" "redis_auth_token" {

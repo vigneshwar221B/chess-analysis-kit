@@ -1,6 +1,6 @@
 backend:
   image: 428234938418.dkr.ecr.us-east-1.amazonaws.com/chess-analysis-kit-backend
-  tag: 5afb884
+  tag: 4fb37d7
   replicas: 1
   port: 5001
   imagePullPolicy: IfNotPresent

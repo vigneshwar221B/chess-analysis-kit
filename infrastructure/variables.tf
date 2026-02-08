@@ -41,7 +41,7 @@ variable "eks_cluster_version" {
 variable "eks_node_instance_types" {
   description = "EC2 instance types for EKS node group"
   type        = list(string)
-  default     = ["t3.micro"]
+  default     = ["t3.small"]
 }
 
 variable "eks_node_min_size" {

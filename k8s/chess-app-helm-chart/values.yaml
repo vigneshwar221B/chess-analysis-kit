@@ -1,6 +1,6 @@
 backend:
   image: 428234938418.dkr.ecr.us-east-1.amazonaws.com/chess-analysis-kit-backend
-  tag: 7d00164
+  tag: 5afb884
   replicas: 1
   port: 5001
   imagePullPolicy: IfNotPresent
@@ -22,7 +22,7 @@ backend:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 60
   # ALB target group ARN (set by CI/CD from SSM)
-  targetGroupArn: ""
+  targetGroupArn: "arn:aws:elasticloadbalancing:us-east-1:428234938418:targetgroup/chess-analysis-kit-backend/79f32378b920e95f"
   # IRSA role ARN for backend pods (set by Terraform on AWS)
   serviceAccount:
     create: true
